@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualizador de Dados</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 100%;
+            margin: auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .tabs {
+            display: flex;
+            justify-content: flex-start;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #ddd;
+        }
+        .tab-button {
+            padding: 10px 15px;
+            cursor: pointer;
+            border: none;
+            background-color: transparent;
+            font-size: 16px;
+            font-weight: bold;
+            color: #555;
+            transition: color 0.3s, border-bottom 0.3s;
+        }
+        .tab-button.active {
+            color: #007BFF;
+            border-bottom: 2px solid #007BFF;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .controls button {
+            padding: 10px 20px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .controls button:hover {
+            background-color: #0056b3;
+        }
+        .filter-controls {
+            margin-bottom: 10px;
+            text-align: right;
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 5px; /* Ajuste no espaçamento */
+        }
+        .filter-controls button {
+            padding: 5px 10px;
+            font-size: 14px;
+            background-color: #f44336;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .filter-controls button:hover {
+            background-color: #d32f2f;
+        }
+        .filter-input {
+            width: 80px; /* Ajuste na largura */
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        #status-message {
+            font-size: 14px;
+            font-weight: bold;
+            color: #555;
+        }
+        #data-table-container, #meia-viagem-table-container, #detailed-data-container {
+            overflow-x: auto;
+            max-height: 70vh;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        .detailed-group-container {
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            margin-top: 15px;
+            background-color: #f9f9f9;
+        }
+        .group-header {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        .group-info {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }
+        .group-item {
+            font-weight: bold;
+            text-align: center;
+            background-color: #e9e9e9;
+            padding: 5px 10px;
+            border-radius: 4px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        thead th {
+            position: sticky;
+            top: 0;
+            background-color: #f2f2f2;
+            color: #333;
+            font-weight: bold;
+            padding: 8px 6px; /* Ajuste no padding */
+            border-bottom: 1px solid #ddd;
+            cursor: pointer;
+            white-space: nowrap;
+            user-select: none;
+        }
+        thead th:hover {
+            background-color: #e9e9e9;
+        }
+        .sort-icon {
+            font-size: 10px;
+            vertical-align: middle;
+            margin-left: 5px;
+        }
+        tbody td {
+            text-align: center;
+            padding: 8px 6px; /* Ajuste no padding */
+            border-bottom: 1px solid #ddd;
+            white-space: nowrap;
+        }
+        tbody tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        tbody tr:hover {
+            background-color: #e9e9e9;
+        }
+        .no-data-message {
+            text-align: center;
+            padding: 20px;
+            color: #888;
+        }
+        /* Classes para alinhamento */
+        .text-left {
+            text-align: left !important;
+        }
+        /* Classes para formatação condicional */
+        .highlight-red {
+            background-color: #f44336;
+            color: white;
+        }
+        .highlight-black {
+            background-color: #212121;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="tabs">
+        <button class="tab-button active" onclick="openTab('load-data')">Carregar Dados</button>
+        <button class="tab-button" onclick="openTab('table-view')">Visualizar Tabela</button>
+        <button class="tab-button" onclick="openTab('meia-viagem-view')">Meia viagem</button>
+        <button class="tab-button" onclick="openTab('detailed-view')">Detalhado</button>
+    </div>
+
+    <div id="load-data" class="tab-content active">
+        <h3>Carregar Dados da Planilha</h3>
+        <p>Clique no botão para buscar as informações mais recentes e exibi-las nas outras abas.</p>
+        
+        <div class="controls">
+            <button onclick="fetchData()">Atualizar Dados</button>
+            <span id="status-message"></span>
+        </div>
+    </div>
+    
+    <div id="table-view" class="tab-content">
+        <h3>Relatório Completo</h3>
+        <div class="filter-controls">
+            <button onclick="clearAllFilters('main')">Limpar Pesquisa</button>
+        </div>
+        <div id="data-table-container">
+            <p class="no-data-message" id="no-data-message">Nenhum dado carregado. Por favor, vá para a aba "Carregar Dados" e clique em "Atualizar Dados".</p>
+            <table id="data-table" style="display: none;">
+                <thead>
+                    <tr id="table-header-row"></tr>
+                    <tr id="filter-row"></tr>
+                </thead>
+                <tbody id="table-body"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="meia-viagem-view" class="tab-content">
+        <h3>Meia viagem</h3>
+        <div class="filter-controls">
+            <button onclick="clearAllFilters('meiaViagem')">Limpar Pesquisa</button>
+        </div>
+        <div id="meia-viagem-table-container">
+            <p class="no-data-message" id="no-meia-viagem-message">Nenhum dado carregado. Por favor, vá para a aba "Carregar Dados" e clique em "Atualizar Dados".</p>
+            <table id="meia-viagem-table" style="display: none;">
+                <thead>
+                    <tr id="meia-viagem-header-row"></tr>
+                    <tr id="meia-viagem-filter-row"></tr>
+                </thead>
+                <tbody id="meia-viagem-table-body"></tbody>
+            </table>
+        </div>
+    </div>
+    
+    <div id="detailed-view" class="tab-content">
+        <h3>Relatório Detalhado</h3>
+        <div class="filter-controls">
+            <input type="text" id="detailed-linha-filter-input" class="filter-input" placeholder="Filtrar por Linha...">
+            <input type="text" id="detailed-carro-filter-input" class="filter-input" placeholder="Filtrar por Carro...">
+            <button id="detailed-search-button" onclick="applyDetailedFilters()">Pesquisar</button>
+            <button onclick="clearAllFilters('detailed')">Limpar Pesquisa</button>
+        </div>
+        <div id="detailed-data-container">
+            <p class="no-data-message" id="no-detailed-message">Nenhum dado carregado. Por favor, vá para a aba "Carregar Dados" e clique em "Atualizar Dados".</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    const appScriptUrl = 'https://script.google.com/macros/s/AKfycbxDPQCtNq-5NsE1yvyDhbcPwyK-KCQm_NUUlVselYYipdC8PL2jxlt3lqU3F8yMtRbP/exec';
+    let fullData = null;
+    let sortedAndFilteredData = [];
+    let sortDirection = {};
+    const filterValues = {};
+
+    let meiaViagemData = [];
+    let meiaViagemSortDirection = {};
+    const meiaViagemFilterValues = {};
+    
+    const headerAbbreviations = {
+        'Total de Embarques': 'Total',
+        'Estudante 100%': 'Estud.'
+    };
+    
+    const meiaViagemHeaders = [
+        'Motorista', 'Carro', 'Linha', 'Data', 'Inicio', 'Fim', 
+        'Tempo', 'Sentido', 'Total de Embarques', 'Estudante 100%', 'Idoso'
+    ];
+    let meiaViagemColumnIndexes = {};
+
+    function openTab(tabName) {
+        const tabs = document.getElementsByClassName('tab-content');
+        for (let i = 0; i < tabs.length; i++) {
+            tabs[i].style.display = 'none';
+        }
+        const tabButtons = document.getElementsByClassName('tab-button');
+        for (let i = 0; i < tabButtons.length; i++) {
+            tabButtons[i].classList.remove('active');
+        }
+        
+        const tabContent = document.getElementById(tabName);
+        if (tabContent) {
+            tabContent.style.display = 'block';
+        }
+        
+        const activeTabButton = document.querySelector(`.tab-button[onclick="openTab('${tabName}')"]`);
+        if (activeTabButton) {
+            activeTabButton.classList.add('active');
+        }
+        
+        if (tabName === 'detailed-view') {
+            if (fullData) {
+                applyDetailedFilters();
+            }
+        }
+    }
+    
+    document.addEventListener('DOMContentLoaded', () => {
+        openTab('load-data');
+    });
+    async function fetchData() {
+        const statusMessage = document.getElementById('status-message');
+        const noDataMessage = document.getElementById('no-data-message');
+        const noMeiaViagemMessage = document.getElementById('no-meia-viagem-message');
+        const noDetailedMessage = document.getElementById('no-detailed-message');
+        
+        statusMessage.textContent = 'Carregando...';
+        statusMessage.style.color = '#007BFF';
+        if (noDataMessage) noDataMessage.style.display = 'none';
+        if (noMeiaViagemMessage) noMeiaViagemMessage.style.display = 'none';
+        if (noDetailedMessage) noDetailedMessage.style.display = 'none';
+        try {
+            const response = await fetch(appScriptUrl);
+            const rawData = await response.json();
+
+            if (rawData.error) {
+                statusMessage.textContent = `Erro: ${rawData.error}`;
+                statusMessage.style.color = 'red';
+                return;
+            }
+
+            const headers = rawData.headers.length > 0 ?
+            String(rawData.headers[0]).split(';').map(h => h.trim()) : [];
+            const linhaIndex = headers.indexOf('Linha');
+
+            const processedRows = rawData.rows.map(row => {
+                const newRow = String(row[0]).split(';').map(cell => cell.trim());
+                if (linhaIndex !== -1) {
+                    newRow[linhaIndex] = String(newRow[linhaIndex]).split(' - ')[0].trim();
+                }
+                return newRow;
+            });
+            const processedData = {
+                headers: headers,
+                rows: processedRows
+            };
+            fullData = processedData;
+            sortedAndFilteredData = [...fullData.rows];
+            meiaViagemData = [...fullData.rows];
+            sortDirection = {};
+            meiaViagemSortDirection = {};
+            
+            createTableHeaders(fullData.headers);
+            renderTable(sortedAndFilteredData);
+            createMeiaViagemTable();
+            applyDetailedFilters();
+            statusMessage.textContent = 'Dados atualizados!';
+            statusMessage.style.color = 'green';
+            
+        } catch (error) {
+            console.error('Fetch Error:', error);
+            statusMessage.textContent = 'Erro ao carregar os dados. Verifique a URL do App Script e o formato dos dados.';
+            statusMessage.style.color = 'red';
+        }
+    }
+
+    function groupData(dataToGroup) {
+        const grouped = {};
+        if (!dataToGroup || dataToGroup.length === 0 || !fullData || fullData.headers.length === 0) return {};
+        
+        const headers = fullData.headers;
+        const columnIndices = {
+            linha: headers.indexOf('Linha'),
+            carro: headers.indexOf('Carro'),
+            data: headers.indexOf('Data'),
+            motorista: headers.indexOf('Motorista'),
+            inicio: headers.indexOf('Inicio'),
+            fim: headers.indexOf('Fim'),
+            total: headers.indexOf('Total de Embarques'),
+            sentido: headers.indexOf('Sentido')
+        };
+        const requiredColumns = ['linha', 'carro', 'data'];
+        for (const col of requiredColumns) {
+            if (columnIndices[col] === -1) {
+                console.error(`Coluna essencial '${col}' não encontrada nos dados.`);
+                return {};
+            }
+        }
+        
+        dataToGroup.forEach(row => {
+            const linhaValue = row[columnIndices.linha];
+            const carroValue = row[columnIndices.carro];
+            const dataValue = row[columnIndices.data];
+            
+            const key = `${linhaValue}_${carroValue}_${dataValue}`;
+
+            if (!grouped[key]) {
+                grouped[key] = {
+                    linha: linhaValue,
+                    carro: carroValue,
+                    data: dataValue,
+                    details: []
+                };
+            }
+            
+            const details = {};
+            for (const prop in columnIndices) {
+                if (columnIndices[prop] !== -1) {
+                    details[prop] = row[columnIndices[prop]];
+                }
+            }
+            grouped[key].details.push(details);
+        });
+        return grouped;
+    }
+    
+    function applyDetailedFilters() {
+        if (!fullData || !fullData.rows) {
+            document.getElementById('no-detailed-message').style.display = 'block';
+            return;
+        }
+
+        const linhaFilterInput = document.getElementById('detailed-linha-filter-input');
+        const carroFilterInput = document.getElementById('detailed-carro-filter-input');
+        const linhaFilterValue = linhaFilterInput ? linhaFilterInput.value.toLowerCase() : '';
+        const carroFilterValue = carroFilterInput ? carroFilterInput.value.toLowerCase() : '';
+        
+        const headers = fullData.headers;
+        const linhaIndex = headers.indexOf('Linha');
+        const carroIndex = headers.indexOf('Carro');
+
+        if (linhaIndex === -1 || carroIndex === -1) {
+            console.error('Colunas de filtro "Linha" ou "Carro" não encontradas.');
+            document.getElementById('no-detailed-message').textContent = 'Colunas de filtro não encontradas.';
+            document.getElementById('no-detailed-message').style.display = 'block';
+            return;
+        }
+        
+        const filteredData = fullData.rows.filter(row => {
+            const linhaMatch = String(row[linhaIndex]).toLowerCase().includes(linhaFilterValue);
+            const carroMatch = String(row[carroIndex]).toLowerCase().includes(carroFilterValue);
+            return linhaMatch && carroMatch;
+        });
+        renderDetailedView(filteredData);
+    }
+    
+    function renderDetailedView(dataToRender) {
+        const container = document.getElementById('detailed-data-container');
+        const noDataMessage = document.getElementById('no-detailed-message');
+        
+        if (!container || !noDataMessage) return;
+
+        container.innerHTML = '';
+        noDataMessage.style.display = 'none';
+
+        const filteredGroupedData = groupData(dataToRender);
+        const filteredKeys = Object.keys(filteredGroupedData);
+
+        if (filteredKeys.length === 0) {
+            noDataMessage.textContent = 'Nenhum resultado encontrado.';
+            noDataMessage.style.display = 'block';
+            return;
+        }
+
+        filteredKeys.forEach(key => {
+            const group = filteredGroupedData[key];
+            const groupContainer = document.createElement('div');
+            groupContainer.className = 'detailed-group-container';
+
+            const groupInfoDiv = document.createElement('div');
+            groupInfoDiv.className = 'group-info';
+            
+            const linhaSpan = document.createElement('div');
+            linhaSpan.className = 'group-item';
+            linhaSpan.textContent = `Linha: ${group.linha}`;
+            groupInfoDiv.appendChild(linhaSpan);
+            
+            const carroSpan = document.createElement('div');
+            carroSpan.className = 'group-item';
+            carroSpan.textContent = `Carro: ${group.carro}`;
+            groupInfoDiv.appendChild(carroSpan);
+            
+            const dataSpan = document.createElement('div');
+            dataSpan.className = 'group-item';
+            dataSpan.textContent = `Data: ${group.data}`;
+            groupInfoDiv.appendChild(dataSpan);
+
+            groupContainer.appendChild(groupInfoDiv);
+
+            const table = document.createElement('table');
+            const thead = document.createElement('thead');
+            const tbody = document.createElement('tbody');
+            table.appendChild(thead);
+            table.appendChild(tbody);
+            const headers = ['Motorista', 'Início', 'Fim', 'Total', 'Sentido'];
+            const headerRow = document.createElement('tr');
+            headers.forEach(headerText => {
+                const th = document.createElement('th');
+                th.textContent = headerText;
+                headerRow.appendChild(th);
+            });
+            thead.appendChild(headerRow);
+            
+            group.details.forEach(detail => {
+                const tr = document.createElement('tr');
+                const motoristaTd = document.createElement('td');
+                motoristaTd.textContent = detail.motorista;
+                motoristaTd.classList.add('text-left');
+                tr.appendChild(motoristaTd);
+                
+                const inicioTd = document.createElement('td');
+                inicioTd.textContent = detail.inicio;
+                tr.appendChild(inicioTd);
+
+                const fimTd = document.createElement('td');
+                fimTd.textContent = detail.fim;
+                tr.appendChild(fimTd);
+                
+                const totalTd = document.createElement('td');
+                totalTd.textContent = detail.total;
+                const totalValue = parseInt(detail.total);
+                if (!isNaN(totalValue)) {
+                    if (totalValue >= 60 && totalValue <= 75) {
+                        totalTd.classList.add('highlight-red');
+                    } else if (totalValue > 75) {
+                        totalTd.classList.add('highlight-black');
+                    }
+                }
+                tr.appendChild(totalTd);
+                const sentidoTd = document.createElement('td');
+                sentidoTd.textContent = detail.sentido;
+                tr.appendChild(sentidoTd);
+                
+                tbody.appendChild(tr);
+            });
+            
+            groupContainer.appendChild(table);
+            container.appendChild(groupContainer);
+        });
+    }
+
+
+    function createTableHeaders(headers) {
+        const headerRow = document.getElementById('table-header-row');
+        const filterRow = document.getElementById('filter-row');
+        if (!headerRow || !filterRow) return;
+
+        headerRow.innerHTML = '';
+        filterRow.innerHTML = '';
+        headers.forEach((headerText, index) => {
+            const thHeader = document.createElement('th');
+            thHeader.textContent = headerAbbreviations[headerText] || headerText;
+            thHeader.onclick = () => sortTable(index);
+            
+            const sortIcon = document.createElement('span');
+            sortIcon.id = `sort-icon-${index}`;
+            sortIcon.className = 'sort-icon';
+            thHeader.appendChild(sortIcon);
+            headerRow.appendChild(thHeader);
+
+            const thFilter = document.createElement('th');
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.placeholder = `Filtrar...`;
+            input.className = 'filter-input';
+            input.addEventListener('input', (event) => {
+                filterValues[index] = event.target.value.toLowerCase();
+                applyFiltersAndSort();
+            });
+            thFilter.appendChild(input);
+            filterRow.appendChild(thFilter);
+        });
+    }
+
+    function sortTable(columnIndex) {
+        const isAscending = sortDirection[columnIndex] !== 'asc';
+        sortDirection = {};
+        sortDirection[columnIndex] = isAscending ? 'asc' : 'desc';
+        const compare = (a, b) => {
+            const valA = a[columnIndex];
+            const valB = b[columnIndex];
+            
+            if (valA === valB) return 0;
+            
+            const numA = parseFloat(String(valA).replace('R$', '').replace(/,/g, '.').trim());
+            const numB = parseFloat(String(valB).replace('R$', '').replace(/,/g, '.').trim());
+
+            if (!isNaN(numA) && !isNaN(numB)) {
+                return isAscending ?
+                numA - numB : numB - numA;
+            }
+            
+            return isAscending ?
+            String(valA).localeCompare(String(valB)) : String(valB).localeCompare(String(a));
+        };
+
+        sortedAndFilteredData.sort(compare);
+        updateSortIcons(columnIndex, isAscending);
+        renderTable(sortedAndFilteredData);
+    }
+    
+    function updateSortIcons(columnIndex, isAscending) {
+        document.querySelectorAll('.sort-icon').forEach(icon => icon.textContent = '');
+        const currentIcon = document.getElementById(`sort-icon-${columnIndex}`);
+        if (currentIcon) {
+            currentIcon.textContent = isAscending ?
+            ' ▲' : ' ▼';
+        }
+    }
+
+    function applyFiltersAndSort() {
+        let hasFilter = false;
+        for (const col in filterValues) {
+            if (filterValues[col].length > 0) {
+                hasFilter = true;
+                break;
+            }
+        }
+        
+        let filteredRows;
+        if (!hasFilter) {
+            filteredRows = [...fullData.rows];
+        } else {
+            filteredRows = fullData.rows.filter(row => {
+                for (const colIndex in filterValues) {
+                    const filterText = filterValues[colIndex];
+                    if (filterText) {
+                        const cellValue = String(row[colIndex]).toLowerCase();
+                        if (cellValue.indexOf(filterText) === -1) {
+                            return false;
+                        }
+                    }
+                }
+                return true;
+            });
+        }
+        
+        const sortColumn = Object.keys(sortDirection)[0];
+        if (sortColumn !== undefined) {
+            const isAscending = sortDirection[sortColumn] === 'asc';
+            const compare = (a, b) => {
+                 const valA = a[sortColumn];
+                 const valB = b[sortColumn];
+
+                 if (valA === valB) return 0;
+            
+                 const numA = parseFloat(String(valA).replace('R$', '').replace(/,/g, '.').trim());
+                 const numB = parseFloat(String(valB).replace('R$', '').replace(/,/g, '.').trim());
+
+                 if (!isNaN(numA) && !isNaN(numB)) {
+                     return isAscending ?
+                     numA - numB : numB - numA;
+                 }
+                 return isAscending ?
+                 String(valA).localeCompare(String(valB)) : String(valB).localeCompare(String(a));
+            };
+            filteredRows.sort(compare);
+        }
+        
+        sortedAndFilteredData = filteredRows;
+        renderTable(sortedAndFilteredData);
+    }
+
+    function renderTable(rows) {
+        const tableBody = document.getElementById('table-body');
+        const noDataMessage = document.getElementById('no-data-message');
+        const tableContainer = document.getElementById('data-table');
+
+        if (!tableBody || !noDataMessage || !tableContainer) return;
+        
+        tableBody.innerHTML = '';
+        if (rows.length === 0) {
+            noDataMessage.textContent = 'Nenhum resultado encontrado.';
+            noDataMessage.style.display = 'block';
+            tableContainer.style.display = 'none';
+            return;
+        }
+
+        noDataMessage.style.display = 'none';
+        tableContainer.style.display = 'table';
+        
+        const totalIndex = fullData.headers.indexOf('Total de Embarques');
+        rows.forEach(row => {
+            const tr = document.createElement('tr');
+            fullData.headers.forEach((header, index) => {
+                const td = document.createElement('td');
+                td.textContent = row[index];
+                
+                if (header === 'Motorista' || header === 'Linha') {
+                    td.classList.add('text-left');
+                }
+
+                if (index === totalIndex) {
+                    const value = parseInt(row[index]);
+                    if (!isNaN(value)) {
+                        if (value >= 60 && value <= 75) {
+                            td.classList.add('highlight-red');
+                        } else if (value > 75) {
+                            td.classList.add('highlight-black');
+                        }
+                    }
+                }
+
+                tr.appendChild(td);
+            });
+            tableBody.appendChild(tr);
+        });
+    }
+
+    function createMeiaViagemTable() {
+        if (!fullData || fullData.rows.length === 0) return;
+        meiaViagemColumnIndexes = {};
+        meiaViagemHeaders.forEach(header => {
+            meiaViagemColumnIndexes[header] = fullData.headers.indexOf(header);
+        });
+        const headerRow = document.getElementById('meia-viagem-header-row');
+        const filterRow = document.getElementById('meia-viagem-filter-row');
+        if (!headerRow || !filterRow) return;
+
+        headerRow.innerHTML = '';
+        filterRow.innerHTML = '';
+        meiaViagemHeaders.forEach((headerText, index) => {
+            const thHeader = document.createElement('th');
+            thHeader.textContent = headerAbbreviations[headerText] || headerText;
+            thHeader.onclick = () => sortMeiaViagemTable(index);
+            
+            const sortIcon = document.createElement('span');
+            sortIcon.id = `meia-viagem-sort-icon-${index}`;
+            sortIcon.className = 'sort-icon';
+            thHeader.appendChild(sortIcon);
+            headerRow.appendChild(thHeader);
+
+            const thFilter = document.createElement('th');
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.placeholder = `Filtrar...`;
+            input.className = 'filter-input';
+            input.addEventListener('input', (event) => {
+                meiaViagemFilterValues[index] = event.target.value.toLowerCase();
+                applyMeiaViagemFiltersAndSort();
+            });
+            thFilter.appendChild(input);
+            filterRow.appendChild(thFilter);
+        });
+        
+        meiaViagemData = fullData.rows.map(row => meiaViagemHeaders.map(header => row[meiaViagemColumnIndexes[header]]));
+        renderMeiaViagemTable(meiaViagemData);
+    }
+
+    function sortMeiaViagemTable(columnIndex) {
+        const isAscending = meiaViagemSortDirection[columnIndex] !== 'asc';
+        meiaViagemSortDirection = {};
+        meiaViagemSortDirection[columnIndex] = isAscending ? 'asc' : 'desc';
+        const compare = (a, b) => {
+            const valA = a[columnIndex];
+            const valB = b[columnIndex];
+            
+            if (valA === valB) return 0;
+            
+            const numA = parseFloat(String(valA).replace('R$', '').replace(/,/g, '.').trim());
+            const numB = parseFloat(String(valB).replace('R$', '').replace(/,/g, '.').trim());
+
+            if (!isNaN(numA) && !isNaN(numB)) {
+                return isAscending ?
+                numA - numB : numB - numA;
+            }
+            
+            return isAscending ?
+            String(valA).localeCompare(String(valB)) : String(valB).localeCompare(String(a));
+        };
+
+        meiaViagemData.sort(compare);
+        updateMeiaViagemSortIcons(columnIndex, isAscending);
+        renderMeiaViagemTable(meiaViagemData);
+    }
+
+    function updateMeiaViagemSortIcons(columnIndex, isAscending) {
+        document.querySelectorAll('#meia-viagem-table .sort-icon').forEach(icon => icon.textContent = '');
+        const currentIcon = document.getElementById(`meia-viagem-sort-icon-${columnIndex}`);
+        if (currentIcon) {
+            currentIcon.textContent = isAscending ?
+            ' ▲' : ' ▼';
+        }
+    }
+
+    function applyMeiaViagemFiltersAndSort() {
+        let hasFilter = false;
+        for (const col in meiaViagemFilterValues) {
+            if (meiaViagemFilterValues[col].length > 0) {
+                hasFilter = true;
+                break;
+            }
+        }
+        
+        let filteredRows;
+        if (!hasFilter) {
+            filteredRows = [...fullData.rows];
+        } else {
+            filteredRows = fullData.rows.filter(row => {
+                for (const i in meiaViagemFilterValues) {
+                    const filterText = meiaViagemFilterValues[i];
+                    if (filterText) {
+                        const originalColumnIndex = meiaViagemColumnIndexes[meiaViagemHeaders[i]];
+                        const cellValue = String(row[originalColumnIndex]).toLowerCase();
+                        if (cellValue.indexOf(filterText) === -1) {
+                            return false;
+                        }
+                    }
+                }
+                return true;
+            });
+        }
+        
+        let renderedRows = filteredRows.map(row => meiaViagemHeaders.map(header => row[meiaViagemColumnIndexes[header]]));
+        const sortColumn = Object.keys(meiaViagemSortDirection)[0];
+        if (sortColumn !== undefined) {
+            const isAscending = meiaViagemSortDirection[sortColumn] === 'asc';
+            const compare = (a, b) => {
+                 const valA = a[sortColumn];
+                 const valB = b[sortColumn];
+
+                 if (valA === valB) return 0;
+            
+                 const numA = parseFloat(String(valA).replace('R$', '').replace(/,/g, '.').trim());
+                 const numB = parseFloat(String(valB).replace('R$', '').replace(/,/g, '.').trim());
+
+                 if (!isNaN(numA) && !isNaN(numB)) {
+                     return isAscending ?
+                     numA - numB : numB - numA;
+                 }
+                 return isAscending ?
+                 String(valA).localeCompare(String(valB)) : String(valB).localeCompare(String(a));
+            };
+            renderedRows.sort(compare);
+        }
+        
+        meiaViagemData = renderedRows;
+        renderMeiaViagemTable(meiaViagemData);
+    }
+    
+    function renderMeiaViagemTable(rows) {
+        const tableBody = document.getElementById('meia-viagem-table-body');
+        const noDataMessage = document.getElementById('no-meia-viagem-message');
+        const tableContainer = document.getElementById('meia-viagem-table');
+        
+        if (!tableBody || !noDataMessage || !tableContainer) return;
+
+        tableBody.innerHTML = '';
+        if (rows.length === 0) {
+            noDataMessage.textContent = 'Nenhum resultado encontrado.';
+            noDataMessage.style.display = 'block';
+            tableContainer.style.display = 'none';
+            return;
+        }
+
+        noDataMessage.style.display = 'none';
+        tableContainer.style.display = 'table';
+        
+        const totalIndex = meiaViagemHeaders.indexOf('Total de Embarques');
+
+        rows.forEach(row => {
+            const tr = document.createElement('tr');
+            meiaViagemHeaders.forEach((header, index) => {
+                const td = document.createElement('td');
+                td.textContent = row[index];
+                
+                if (header === 'Motorista' || header === 'Linha') {
+                    td.classList.add('text-left');
+                }
+                
+                if (index === totalIndex) {
+                    const value = parseInt(row[index]);
+                    if (!isNaN(value)) {
+                        if (value >= 60 && value <= 75) {
+                            td.classList.add('highlight-red');
+                        } else if (value > 75) {
+                            td.classList.add('highlight-black');
+                        }
+                    }
+                }
+
+                tr.appendChild(td);
+            });
+            tableBody.appendChild(tr);
+        });
+    }
+
+    function clearAllFilters(tableId) {
+        if (tableId === 'main') {
+            for (const key in filterValues) {
+                delete filterValues[key];
+            }
+            document.querySelectorAll('#filter-row .filter-input').forEach(input => input.value = '');
+            sortDirection = {};
+            updateSortIcons(-1, false);
+            sortedAndFilteredData = [...fullData.rows];
+            renderTable(sortedAndFilteredData);
+        } else if (tableId === 'meiaViagem') {
+            for (const key in meiaViagemFilterValues) {
+                delete meiaViagemFilterValues[key];
+            }
+            document.querySelectorAll('#meia-viagem-filter-row .filter-input').forEach(input => input.value = '');
+            meiaViagemSortDirection = {};
+            updateMeiaViagemSortIcons(-1, false);
+            meiaViagemData = fullData.rows.map(row => meiaViagemHeaders.map(header => row[meiaViagemColumnIndexes[header]]));
+            renderMeiaViagemTable(meiaViagemData);
+        } else if (tableId === 'detailed') {
+            const linhaFilterInput = document.getElementById('detailed-linha-filter-input');
+            const carroFilterInput = document.getElementById('detailed-carro-filter-input');
+            if (linhaFilterInput) {
+                linhaFilterInput.value = '';
+            }
+            if (carroFilterInput) {
+                carroFilterInput.value = '';
+            }
+            applyDetailedFilters();
+        }
+    }
+</script>
+
+</body>
+</html>
